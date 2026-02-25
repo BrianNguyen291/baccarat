@@ -34,13 +34,13 @@
 1. 安裝依賴
 
 ```bash
-npm install
+pnpm install
 ```
 
 2. 啟動開發環境
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 3. 瀏覽器開啟
