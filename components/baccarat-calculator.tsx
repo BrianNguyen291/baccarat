@@ -290,7 +290,6 @@ export function BaccaratCalculator() {
       }
 
       if (!data.settings) {
-        toast.message("雲端尚無設定")
         return
       }
 
@@ -298,7 +297,6 @@ export function BaccaratCalculator() {
       setSimulationDecks(data.settings.simulation.decks)
       setSimulationIterations(data.settings.simulation.iterations)
       setLastSyncedAt(data.settings.updatedAt)
-      toast.success("已載入雲端設定")
     } catch (error) {
       toast.error(`載入失敗：${String(error)}`)
     } finally {
