@@ -8,6 +8,7 @@ export interface HistoryRecord {
   id: number
   playerCards: string[]
   bankerCards: string[]
+  roundWinner: "player" | "banker" | "tie"
   score: number
   recommendation: "banker" | "player"
   timestamp: Date
@@ -96,12 +97,30 @@ export function HistoryPanel({ records, onClear }: HistoryPanelProps) {
                 <span
                   className={cn(
                     "shrink-0 px-2 py-0.5 rounded text-xs font-bold",
+                    record.roundWinner === "tie" &&
+                      "bg-amber-500/15 text-amber-400",
+                    record.roundWinner === "banker" &&
+                      "bg-banker/15 text-banker",
+                    record.roundWinner === "player" &&
+                      "bg-player/15 text-player"
+                  )}
+                >
+                  {record.roundWinner === "tie"
+                    ? "和"
+                    : record.roundWinner === "banker"
+                      ? "本局莊"
+                      : "本局閒"}
+                </span>
+
+                <span
+                  className={cn(
+                    "shrink-0 px-2 py-0.5 rounded text-xs font-bold",
                     record.recommendation === "banker"
                       ? "bg-banker/15 text-banker"
                       : "bg-player/15 text-player"
                   )}
                 >
-                  {record.recommendation === "banker" ? "莊" : "閒"}
+                  下局{record.recommendation === "banker" ? "莊" : "閒"}
                 </span>
               </div>
             ))}

@@ -8,6 +8,7 @@ import { toast } from "sonner"
 interface ResultDisplayProps {
   totalScore: number
   recommendation: "banker" | "player" | null
+  roundWinner: "player" | "banker" | "tie" | null
   playerCards: string[]
   bankerCards: string[]
 }
@@ -15,6 +16,7 @@ interface ResultDisplayProps {
 export function ResultDisplay({
   totalScore,
   recommendation,
+  roundWinner,
   playerCards,
   bankerCards,
 }: ResultDisplayProps) {
@@ -27,7 +29,9 @@ export function ResultDisplay({
 
   const handleCopy = async () => {
     if (!hasResult) return
-    const text = `百家樂計算結果\n閒家牌面：${playerCards.join(", ")}\n莊家牌面：${bankerCards.join(", ")}\n加總分數：${totalScore}\n建議：${recommendation === "banker" ? "莊" : "閒"}`
+    const text = `百家樂計算結果\n閒家牌面：${playerCards.join(", ")}\n莊家牌面：${bankerCards.join(", ")}\n本局勝方：${
+      roundWinner === "tie" ? "和" : roundWinner === "banker" ? "莊" : "閒"
+    }\n加總分數：${totalScore}\n下局建議：${recommendation === "banker" ? "莊" : "閒"}`
     await navigator.clipboard.writeText(text)
     setCopied(true)
     toast.success("已複製結果")
@@ -51,6 +55,25 @@ export function ResultDisplay({
             <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
               Recommendation
             </p>
+            {roundWinner && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                本局勝方：
+                <span
+                  className={cn(
+                    "ml-1 font-bold",
+                    roundWinner === "tie" && "text-amber-400",
+                    roundWinner === "banker" && "text-banker",
+                    roundWinner === "player" && "text-player"
+                  )}
+                >
+                  {roundWinner === "tie"
+                    ? "和"
+                    : roundWinner === "banker"
+                      ? "莊"
+                      : "閒"}
+                </span>
+              </div>
+            )}
             {hasResult ? (
               <div
                 className={cn(
