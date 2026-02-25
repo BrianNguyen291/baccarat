@@ -1,20 +1,34 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { CardInputPanel } from "@/components/card-input-panel"
 import { ResultDisplay } from "@/components/result-display"
 import { WeightEditor, DEFAULT_WEIGHTS } from "@/components/weight-editor"
 import { HistoryPanel, type HistoryRecord } from "@/components/history-panel"
-import { CalculatorIcon, RotateCcw } from "lucide-react"
+import {
+  SimulationPanel,
+  type SimulationResult,
+} from "@/components/simulation-panel"
+import { CalculatorIcon, CloudDownload, CloudUpload, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 export function BaccaratCalculator() {
+  const CARD_LABELS = ["0", "A", "2", "3", "4", "5", "6", "7", "8", "9"]
+  const CARD_COUNTS_PER_DECK = [16, 4, 4, 4, 4, 4, 4, 4, 4, 4]
   const [playerCards, setPlayerCards] = useState<string[]>([])
   const [bankerCards, setBankerCards] = useState<string[]>([])
   const [weights, setWeights] = useState<Record<string, number>>({
     ...DEFAULT_WEIGHTS,
   })
+  const [simulationDecks, setSimulationDecks] = useState(8)
+  const [simulationIterations, setSimulationIterations] = useState(20000)
+  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(
+    null
+  )
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [nextId, setNextId] = useState(1)
 
@@ -27,17 +41,19 @@ export function BaccaratCalculator() {
   )
 
   const allCards = [...playerCards, ...bankerCards]
-  const totalScore =
-    allCards.length > 0 ? calculateScore(playerCards, bankerCards) : 0
   const hasCards = allCards.length > 0
-  const recommendation: "banker" | "player" | null = hasCards
+  const isReadyToCalculate = allCards.length === 6
+  const totalScore = isReadyToCalculate
+    ? calculateScore(playerCards, bankerCards)
+    : 0
+  const recommendation: "banker" | "player" | null = isReadyToCalculate
     ? totalScore >= 0
       ? "banker"
       : "player"
     : null
 
   const handleSubmit = () => {
-    if (!hasCards) return
+    if (!isReadyToCalculate) return
 
     const record: HistoryRecord = {
       id: nextId,
@@ -61,6 +77,7 @@ export function BaccaratCalculator() {
   const handleReset = () => {
     setPlayerCards([])
     setBankerCards([])
+    setSimulationResult(null)
   }
 
   const handleWeightChange = (card: string, value: number) => {
@@ -72,10 +89,149 @@ export function BaccaratCalculator() {
     toast.success("權重已重設為預設值")
   }
 
+  const handleSimulate = () => {
+    if (!isReadyToCalculate) return
+
+    const labelToIndex = Object.fromEntries(
+      CARD_LABELS.map((label, index) => [label, index])
+    ) as Record<string, number>
+
+    const counts = CARD_COUNTS_PER_DECK.map(
+      (countPerDeck) => countPerDeck * simulationDecks
+    )
+
+    for (const card of allCards) {
+      const idx = labelToIndex[card]
+      if (idx !== undefined && counts[idx] > 0) {
+        counts[idx] -= 1
+      }
+    }
+
+    const totalAvailable = counts.reduce((sum, n) => sum + n, 0)
+    if (totalAvailable < 6) {
+      toast.error("可用牌數不足，請增加牌靴副數")
+      return
+    }
+
+    let bankerWins = 0
+    let playerWins = 0
+    let scoreSum = 0
+
+    for (let run = 0; run < simulationIterations; run += 1) {
+      const localCounts = [...counts]
+      let remain = totalAvailable
+      let score = 0
+
+      for (let draw = 0; draw < 6; draw += 1) {
+        const target = Math.floor(Math.random() * remain)
+        let cumulative = 0
+        let chosen = 0
+
+        for (let i = 0; i < localCounts.length; i += 1) {
+          cumulative += localCounts[i]
+          if (target < cumulative) {
+            chosen = i
+            break
+          }
+        }
+
+        localCounts[chosen] -= 1
+        remain -= 1
+        score += weights[CARD_LABELS[chosen]] || 0
+      }
+
+      scoreSum += score
+      if (score >= 0) {
+        bankerWins += 1
+      } else {
+        playerWins += 1
+      }
+    }
+
+    setSimulationResult({
+      runs: simulationIterations,
+      bankerRate: bankerWins / simulationIterations,
+      playerRate: playerWins / simulationIterations,
+      avgScore: scoreSum / simulationIterations,
+    })
+  }
+
   const handleClearHistory = () => {
     setHistory([])
     toast.success("歷史紀錄已清除")
   }
+
+  const handleLoadCloudSettings = useCallback(async () => {
+    setIsLoadingSettings(true)
+    try {
+      const res = await fetch("/api/settings", { method: "GET" })
+      const data = (await res.json()) as {
+        settings: {
+          weights: Record<string, number>
+          simulation: { decks: number; iterations: number }
+          updatedAt: string
+        } | null
+        error?: string
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || "Load failed")
+      }
+
+      if (!data.settings) {
+        toast.message("雲端尚無設定")
+        return
+      }
+
+      setWeights(data.settings.weights)
+      setSimulationDecks(data.settings.simulation.decks)
+      setSimulationIterations(data.settings.simulation.iterations)
+      setLastSyncedAt(data.settings.updatedAt)
+      toast.success("已載入雲端設定")
+    } catch (error) {
+      toast.error(`載入失敗：${String(error)}`)
+    } finally {
+      setIsLoadingSettings(false)
+    }
+  }, [])
+
+  const handleSaveCloudSettings = useCallback(async () => {
+    setIsSavingSettings(true)
+    try {
+      const payload = {
+        weights,
+        simulation: { decks: simulationDecks, iterations: simulationIterations },
+      }
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = (await res.json()) as {
+        ok?: boolean
+        settings?: { updatedAt: string }
+        error?: string
+      }
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Save failed")
+      }
+
+      setLastSyncedAt(data.settings?.updatedAt ?? new Date().toISOString())
+      toast.success("已儲存到雲端")
+    } catch (error) {
+      toast.error(`儲存失敗：${String(error)}`)
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }, [weights, simulationDecks, simulationIterations])
+
+  useEffect(() => {
+    setSimulationResult(null)
+  }, [playerCards, bankerCards, weights, simulationDecks, simulationIterations])
+
+  useEffect(() => {
+    void handleLoadCloudSettings()
+  }, [handleLoadCloudSettings])
 
   const bankerCount = history.filter(
     (r) => r.recommendation === "banker"
@@ -166,12 +322,12 @@ export function BaccaratCalculator() {
               <div className="flex items-center gap-3 mt-6 pt-4 border-t border-border">
                 <button
                   onClick={handleSubmit}
-                  disabled={!hasCards}
+                  disabled={!isReadyToCalculate}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-2 py-3 rounded-lg",
                     "font-semibold text-sm transition-all duration-150",
                     "cursor-pointer",
-                    hasCards
+                    isReadyToCalculate
                       ? "bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98]"
                       : "bg-secondary text-muted-foreground cursor-not-allowed"
                   )}
@@ -194,6 +350,9 @@ export function BaccaratCalculator() {
                   清除
                 </button>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                請手動輸入本局共 6 張牌（閒 3 張 + 莊 3 張）後再計算
+              </p>
             </div>
 
             <ResultDisplay
@@ -207,6 +366,58 @@ export function BaccaratCalculator() {
               weights={weights}
               onWeightChange={handleWeightChange}
               onReset={handleWeightReset}
+            />
+
+            <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">雲端設定</h3>
+                <span className="text-xs text-muted-foreground">Upstash Redis</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  onClick={handleLoadCloudSettings}
+                  disabled={isLoadingSettings}
+                  className={cn(
+                    "h-10 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer",
+                    "flex items-center justify-center gap-2",
+                    isLoadingSettings
+                      ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                      : "bg-secondary text-secondary-foreground hover:opacity-90"
+                  )}
+                >
+                  <CloudDownload className="h-4 w-4" />
+                  {isLoadingSettings ? "載入中..." : "從雲端載入"}
+                </button>
+                <button
+                  onClick={handleSaveCloudSettings}
+                  disabled={isSavingSettings}
+                  className={cn(
+                    "h-10 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer",
+                    "flex items-center justify-center gap-2",
+                    isSavingSettings
+                      ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                      : "bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98]"
+                  )}
+                >
+                  <CloudUpload className="h-4 w-4" />
+                  {isSavingSettings ? "儲存中..." : "儲存到雲端"}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {lastSyncedAt
+                  ? `最後同步：${new Date(lastSyncedAt).toLocaleString()}`
+                  : "尚未同步"}
+              </p>
+            </div>
+
+            <SimulationPanel
+              isReady={isReadyToCalculate}
+              decks={simulationDecks}
+              iterations={simulationIterations}
+              result={simulationResult}
+              onDecksChange={setSimulationDecks}
+              onIterationsChange={setSimulationIterations}
+              onSimulate={handleSimulate}
             />
           </div>
 
