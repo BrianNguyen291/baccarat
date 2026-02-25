@@ -21,6 +21,9 @@ export function ResultDisplay({
   const [copied, setCopied] = useState(false)
 
   const hasResult = recommendation !== null
+  const strength = Math.abs(totalScore)
+  const confidence =
+    strength >= 40 ? "高" : strength >= 20 ? "中" : "低"
 
   const handleCopy = async () => {
     if (!hasResult) return
@@ -34,65 +37,75 @@ export function ResultDisplay({
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center gap-4 p-6 rounded-xl border-2 transition-all duration-300",
+        "relative overflow-hidden rounded-xl border p-6 transition-all duration-300",
         !hasResult && "border-border bg-card",
         recommendation === "banker" &&
-          "border-banker bg-banker/5",
+          "border-banker bg-gradient-to-br from-banker/10 via-card to-card",
         recommendation === "player" &&
-          "border-player bg-player/5"
+          "border-player bg-gradient-to-br from-player/10 via-card to-card"
       )}
     >
-      {/* Score */}
-      <div className="flex flex-col items-center gap-1">
-        <span className="text-sm font-medium text-muted-foreground">
-          加總分數
-        </span>
-        <span
-          className={cn(
-            "font-mono text-5xl font-black tracking-tight transition-colors",
-            !hasResult && "text-muted-foreground",
-            recommendation === "banker" && "text-banker",
-            recommendation === "player" && "text-player"
-          )}
-        >
-          {hasResult ? (totalScore >= 0 ? `+${totalScore}` : totalScore) : "—"}
-        </span>
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-5 items-center">
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
+              Recommendation
+            </p>
+            {hasResult ? (
+              <div
+                className={cn(
+                  "mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-2xl font-black",
+                  recommendation === "banker"
+                    ? "bg-banker text-white"
+                    : "bg-player text-white"
+                )}
+              >
+                {recommendation === "banker" ? (
+                  <TrendingUp className="h-5 w-5" />
+                ) : (
+                  <TrendingDown className="h-5 w-5" />
+                )}
+                下一局：{recommendation === "banker" ? "莊" : "閒"}
+              </div>
+            ) : (
+              <div className="mt-2 inline-flex px-4 py-2 rounded-lg bg-secondary text-muted-foreground font-bold">
+                等待合法局面
+              </div>
+            )}
+          </div>
 
-      {/* Recommendation */}
-      <div className="flex flex-col items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">
-          下一局建議
-        </span>
-        {hasResult ? (
+          <div className="text-sm text-muted-foreground">
+            閒：<span className="font-mono text-foreground">{playerCards.join(" ") || "—"}</span>
+            <span className="mx-2">|</span>
+            莊：<span className="font-mono text-foreground">{bankerCards.join(" ") || "—"}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <div className="text-xs text-muted-foreground">加總分數</div>
           <div
             className={cn(
-              "flex items-center gap-2 px-6 py-2 rounded-lg font-bold text-xl",
-              recommendation === "banker"
-                ? "bg-banker text-white"
-                : "bg-player text-white"
+              "font-mono text-5xl font-black tracking-tight leading-none",
+              !hasResult && "text-muted-foreground",
+              recommendation === "banker" && "text-banker",
+              recommendation === "player" && "text-player"
             )}
           >
-            {recommendation === "banker" ? (
-              <TrendingUp className="h-5 w-5" />
-            ) : (
-              <TrendingDown className="h-5 w-5" />
-            )}
-            {recommendation === "banker" ? "莊" : "閒"}
+            {hasResult ? (totalScore >= 0 ? `+${totalScore}` : totalScore) : "—"}
           </div>
-        ) : (
-          <div className="px-6 py-2 rounded-lg bg-secondary text-muted-foreground font-bold text-xl">
-            等待輸入
-          </div>
-        )}
+          {hasResult && (
+            <div className="text-xs text-muted-foreground">
+              訊號強度：<span className="font-semibold text-foreground">{confidence}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Copy button */}
       {hasResult && (
         <button
           onClick={handleCopy}
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg",
+            "mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg",
             "bg-secondary text-secondary-foreground",
             "hover:bg-primary hover:text-primary-foreground",
             "transition-all duration-150 text-sm font-medium cursor-pointer"

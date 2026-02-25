@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { CardInputPanel } from "@/components/card-input-panel"
 import { ResultDisplay } from "@/components/result-display"
 import { WeightEditor, DEFAULT_WEIGHTS } from "@/components/weight-editor"
 import { HistoryPanel, type HistoryRecord } from "@/components/history-panel"
@@ -9,14 +8,12 @@ import {
   SimulationPanel,
   type SimulationResult,
 } from "@/components/simulation-panel"
+import { StandardRoundInput } from "@/components/standard-round-input"
+import { WeightPresetManager } from "@/components/weight-preset-manager"
 import { CalculatorIcon, CloudDownload, CloudUpload, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-
-type RoundValidation =
-  | { status: "incomplete"; message: string }
-  | { status: "invalid"; message: string }
-  | { status: "valid"; message: string }
+import { getLastDealtSide, validateRound } from "@/lib/baccarat-rules"
 
 export function BaccaratCalculator() {
   const CARD_LABELS = ["0", "A", "2", "3", "4", "5", "6", "7", "8", "9"]
@@ -36,111 +33,6 @@ export function BaccaratCalculator() {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
   const [history, setHistory] = useState<HistoryRecord[]>([])
   const [nextId, setNextId] = useState(1)
-
-  const getPoint = (card: string) => {
-    if (card === "0") return 0
-    if (card === "A") return 1
-    return Number(card)
-  }
-
-  const twoCardTotal = (cards: string[]) =>
-    (getPoint(cards[0]) + getPoint(cards[1])) % 10
-
-  const bankerShouldDraw = (bankerTotal: number, playerThirdCard: string) => {
-    const playerThirdPoint = getPoint(playerThirdCard)
-    if (bankerTotal <= 2) return true
-    if (bankerTotal === 3) return playerThirdPoint !== 8
-    if (bankerTotal === 4) return playerThirdPoint >= 2 && playerThirdPoint <= 7
-    if (bankerTotal === 5) return playerThirdPoint >= 4 && playerThirdPoint <= 7
-    if (bankerTotal === 6) return playerThirdPoint === 6 || playerThirdPoint === 7
-    return false
-  }
-
-  const validateRound = (pCards: string[], bCards: string[]): RoundValidation => {
-    if (pCards.length > 3 || bCards.length > 3) {
-      return { status: "invalid", message: "單邊最多只能輸入 3 張牌" }
-    }
-
-    if (pCards.length < 2 || bCards.length < 2) {
-      return { status: "incomplete", message: "請先輸入閒家與莊家各 2 張起始牌" }
-    }
-
-    const totalCards = pCards.length + bCards.length
-    if (totalCards < 4) {
-      return { status: "incomplete", message: "目前牌數不足，請繼續輸入" }
-    }
-    if (totalCards > 6) {
-      return { status: "invalid", message: "每局總牌數最多 6 張" }
-    }
-
-    const playerInitial = twoCardTotal(pCards)
-    const bankerInitial = twoCardTotal(bCards)
-    const hasNatural = playerInitial >= 8 || bankerInitial >= 8
-
-    if (hasNatural) {
-      if (totalCards === 4 && pCards.length === 2 && bCards.length === 2) {
-        return { status: "valid", message: "例牌局（8/9）可直接判定" }
-      }
-      return { status: "invalid", message: "例牌（8/9）不應再補牌，總牌數應為 4 張" }
-    }
-
-    if (totalCards === 4) {
-      if (pCards.length !== 2 || bCards.length !== 2) {
-        return { status: "invalid", message: "4 張牌時必須是閒 2 張、莊 2 張" }
-      }
-
-      const playerDraws = playerInitial <= 5
-      const bankerDrawsWhenPlayerStands = bankerInitial <= 5
-
-      if (playerDraws || bankerDrawsWhenPlayerStands) {
-        return { status: "incomplete", message: "依標準補牌規則，本局仍需補牌（第 5 張）" }
-      }
-
-      return { status: "valid", message: "雙方皆停牌（6/7），4 張牌可直接判定" }
-    }
-
-    if (totalCards === 5) {
-      const playerDrewThird = pCards.length === 3 && bCards.length === 2
-      const bankerDrewThird = pCards.length === 2 && bCards.length === 3
-
-      if (!playerDrewThird && !bankerDrewThird) {
-        return {
-          status: "invalid",
-          message: "5 張牌只能是閒補第 3 張或莊補第 3 張其中一種",
-        }
-      }
-
-      if (playerDrewThird) {
-        if (playerInitial >= 6) {
-          return { status: "invalid", message: "閒家起始牌為 6/7 時不應補第 3 張" }
-        }
-        const shouldBankerDraw = bankerShouldDraw(bankerInitial, pCards[2])
-        if (shouldBankerDraw) {
-          return { status: "incomplete", message: "依規則莊家仍需補第 3 張（第 6 張）" }
-        }
-        return { status: "valid", message: "5 張牌局面符合標準補牌規則" }
-      }
-
-      if (playerInitial <= 5) {
-        return { status: "invalid", message: "閒家起始牌 0-5 應先補第 3 張，不可只莊補牌" }
-      }
-      if (bankerInitial >= 6) {
-        return { status: "invalid", message: "閒家停牌時，莊家起始牌 6/7 不應補第 3 張" }
-      }
-      return { status: "valid", message: "5 張牌局面符合標準補牌規則" }
-    }
-
-    if (pCards.length !== 3 || bCards.length !== 3) {
-      return { status: "invalid", message: "6 張牌時必須是閒 3 張、莊 3 張" }
-    }
-    if (playerInitial >= 6) {
-      return { status: "invalid", message: "閒家起始牌為 6/7 時不應有第 3 張" }
-    }
-    if (!bankerShouldDraw(bankerInitial, pCards[2])) {
-      return { status: "invalid", message: "依規則此局莊家不應補第 3 張" }
-    }
-    return { status: "valid", message: "6 張牌局面符合標準補牌規則" }
-  }
 
   const calculateScore = useCallback(
     (pCards: string[], bCards: string[]) => {
@@ -272,6 +164,28 @@ export function BaccaratCalculator() {
     toast.success("歷史紀錄已清除")
   }
 
+  const handleAddCardByFlow = (side: "player" | "banker", card: string) => {
+    if (side === "player") {
+      setPlayerCards((prev) => (prev.length < 3 ? [...prev, card] : prev))
+      return
+    }
+    setBankerCards((prev) => (prev.length < 3 ? [...prev, card] : prev))
+  }
+
+  const handleUndoLastCard = () => {
+    const side = getLastDealtSide(playerCards, bankerCards)
+    if (!side) return
+    if (side === "player") {
+      setPlayerCards((prev) => prev.slice(0, -1))
+    } else {
+      setBankerCards((prev) => prev.slice(0, -1))
+    }
+  }
+
+  const handleApplyPreset = (presetWeights: Record<string, number>) => {
+    setWeights(presetWeights)
+  }
+
   const handleLoadCloudSettings = useCallback(async () => {
     setIsLoadingSettings(true)
     try {
@@ -395,39 +309,13 @@ export function BaccaratCalculator() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 flex flex-col gap-6">
             <div className="rounded-xl border border-border bg-card p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <CardInputPanel
-                  label="閒家 Player"
-                  side="player"
-                  cards={playerCards}
-                  onAddCard={(card) =>
-                    setPlayerCards((prev) =>
-                      prev.length < 3 ? [...prev, card] : prev
-                    )
-                  }
-                  onRemoveCard={(i) =>
-                    setPlayerCards((prev) =>
-                      prev.filter((_, idx) => idx !== i)
-                    )
-                  }
-                />
-                <CardInputPanel
-                  label="莊家 Banker"
-                  side="banker"
-                  cards={bankerCards}
-                  onAddCard={(card) =>
-                    setBankerCards((prev) =>
-                      prev.length < 3 ? [...prev, card] : prev
-                    )
-                  }
-                  onRemoveCard={(i) =>
-                    setBankerCards((prev) =>
-                      prev.filter((_, idx) => idx !== i)
-                    )
-                  }
-                />
-              </div>
-
+              <StandardRoundInput
+                playerCards={playerCards}
+                bankerCards={bankerCards}
+                onAddCard={handleAddCardByFlow}
+                onUndoLast={handleUndoLastCard}
+                onClear={handleReset}
+              />
               <div className="flex items-center gap-3 mt-6 pt-4 border-t border-border">
                 <button
                   onClick={handleSubmit}
@@ -460,7 +348,7 @@ export function BaccaratCalculator() {
                 </button>
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                請手動輸入本局牌面（依標準百家樂補牌規則）
+                請手動輸入本局牌面（系統已限制為標準百家樂發牌流程）
               </p>
               <p
                 className={cn(
@@ -485,6 +373,10 @@ export function BaccaratCalculator() {
               weights={weights}
               onWeightChange={handleWeightChange}
               onReset={handleWeightReset}
+            />
+            <WeightPresetManager
+              weights={weights}
+              onApplyPreset={handleApplyPreset}
             />
 
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
