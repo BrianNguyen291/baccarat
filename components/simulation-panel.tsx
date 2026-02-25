@@ -83,7 +83,7 @@ export function SimulationPanel({
 
       {!isReady && (
         <p className="text-xs text-muted-foreground">
-          先輸入本局 6 張牌，模擬才會啟用
+          需先輸入一個符合標準補牌規則的本局牌面，模擬才會啟用
         </p>
       )}
 
@@ -110,11 +110,10 @@ export function SimulationPanel({
             </div>
           </div>
           <div className="sm:col-span-3 text-xs text-muted-foreground">
-            以 {result.runs.toLocaleString()} 次隨機發牌計算（不含已輸入本局 6 張牌）
+            以 {result.runs.toLocaleString()} 次隨機發牌計算（不含已輸入本局牌面）
           </div>
         </div>
       )}
     </div>
   )
 }
-

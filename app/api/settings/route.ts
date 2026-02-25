@@ -4,16 +4,16 @@ import { NextResponse } from "next/server"
 const CARD_LABELS = ["0", "A", "2", "3", "4", "5", "6", "7", "8", "9"] as const
 
 const DEFAULT_WEIGHTS: Record<string, number> = {
-  "0": 1,
-  A: 4,
-  "2": 6,
-  "3": 9,
-  "4": 19,
-  "5": -12,
-  "6": -18,
-  "7": -12,
-  "8": -6,
-  "9": -1,
+  "0": 4,
+  A: 9,
+  "2": 11,
+  "3": 14,
+  "4": 24,
+  "5": -17,
+  "6": -23,
+  "7": -17,
+  "8": -11,
+  "9": -5,
 }
 
 type PersistedSettings = {
