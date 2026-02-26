@@ -389,6 +389,10 @@ export function BaccaratCalculator() {
               onApplyPreset={handleApplyPreset}
             />
 
+            <div className="lg:hidden">
+              <HistoryPanel records={history} onClear={handleClearHistory} />
+            </div>
+
             <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">雲端設定</h3>
@@ -442,7 +446,7 @@ export function BaccaratCalculator() {
             />
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="hidden lg:block lg:col-span-1">
             <HistoryPanel records={history} onClear={handleClearHistory} />
           </div>
         </div>
