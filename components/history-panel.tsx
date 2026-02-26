@@ -8,7 +8,6 @@ export interface HistoryRecord {
   id: number
   playerCards: string[]
   bankerCards: string[]
-  roundWinner: "player" | "banker" | "tie"
   score: number
   rollingSum6: number | null
   recommendation: "banker" | "player" | null
@@ -60,31 +59,24 @@ export function HistoryPanel({ records, onClear }: HistoryPanelProps) {
                   "transition-colors"
                 )}
               >
-                {/* Round number */}
                 <span className="text-xs text-muted-foreground font-mono w-6 shrink-0 text-right">
                   #{records.length - i}
                 </span>
 
-                {/* Cards info */}
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-player font-semibold">
-                      {"閒"}
-                    </span>
+                    <span className="text-player font-semibold">閒</span>
                     <span className="font-mono text-foreground">
                       {record.playerCards.join(" ")}
                     </span>
                     <span className="text-muted-foreground mx-1">|</span>
-                    <span className="text-banker font-semibold">
-                      {"莊"}
-                    </span>
+                    <span className="text-banker font-semibold">莊</span>
                     <span className="font-mono text-foreground">
                       {record.bankerCards.join(" ")}
                     </span>
                   </div>
                 </div>
 
-                {/* Score */}
                 <span
                   className={cn(
                     "font-mono text-sm font-bold shrink-0",
@@ -92,25 +84,6 @@ export function HistoryPanel({ records, onClear }: HistoryPanelProps) {
                   )}
                 >
                   {record.score >= 0 ? `+${record.score}` : record.score}
-                </span>
-
-                {/* Recommendation badge */}
-                <span
-                  className={cn(
-                    "shrink-0 px-2 py-0.5 rounded text-xs font-bold",
-                    record.roundWinner === "tie" &&
-                      "bg-amber-500/15 text-amber-400",
-                    record.roundWinner === "banker" &&
-                      "bg-banker/15 text-banker",
-                    record.roundWinner === "player" &&
-                      "bg-player/15 text-player"
-                  )}
-                >
-                  {record.roundWinner === "tie"
-                    ? "和"
-                    : record.roundWinner === "banker"
-                      ? "本局莊"
-                      : "本局閒"}
                 </span>
 
                 {record.recommendation ? (
@@ -122,8 +95,7 @@ export function HistoryPanel({ records, onClear }: HistoryPanelProps) {
                         : "bg-player/15 text-player"
                     )}
                   >
-                    Sum6 {record.rollingSum6 !== null && record.rollingSum6 >= 0 ? "+" : ""}
-                    {record.rollingSum6 ?? "—"} 下局{record.recommendation === "banker" ? "莊" : "閒"}
+                    {record.recommendation === "banker" ? "莊" : "閒"}
                   </span>
                 ) : (
                   <span className="shrink-0 px-2 py-0.5 rounded text-xs font-bold bg-secondary text-muted-foreground">

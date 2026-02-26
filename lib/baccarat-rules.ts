@@ -11,10 +11,6 @@ export function getPoint(card: string) {
   return Number(card)
 }
 
-export function handTotal(cards: string[]) {
-  return cards.reduce((sum, card) => sum + getPoint(card), 0) % 10
-}
-
 export function twoCardTotal(cards: string[]) {
   return (getPoint(cards[0]) + getPoint(cards[1])) % 10
 }
@@ -143,15 +139,3 @@ export function getLastDealtSide(playerCards: string[], bankerCards: string[]): 
   return "banker"
 }
 
-export type RoundWinner = "player" | "banker" | "tie"
-
-export function getRoundWinner(
-  playerCards: string[],
-  bankerCards: string[]
-): RoundWinner {
-  const p = handTotal(playerCards)
-  const b = handTotal(bankerCards)
-  if (p > b) return "player"
-  if (b > p) return "banker"
-  return "tie"
-}

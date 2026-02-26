@@ -13,7 +13,7 @@ import { WeightPresetManager } from "@/components/weight-preset-manager"
 import { CalculatorIcon, CloudDownload, CloudUpload, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { getLastDealtSide, getRoundWinner, validateRound } from "@/lib/baccarat-rules"
+import { getLastDealtSide, validateRound } from "@/lib/baccarat-rules"
 
 export function BaccaratCalculator() {
   const CARD_LABELS = ["0", "A", "2", "3", "4", "5", "6", "7", "8", "9"]
@@ -56,10 +56,6 @@ export function BaccaratCalculator() {
       : null
   const recommendation: "banker" | "player" | null =
     rollingSum6 === null ? null : rollingSum6 >= 0 ? "banker" : "player"
-  const roundsReady = Math.min(history.length, 6)
-  const roundWinner: "player" | "banker" | "tie" | null = isReadyToCalculate
-    ? getRoundWinner(playerCards, bankerCards)
-    : null
 
   const handleSubmit = () => {
     if (!isReadyToCalculate) return
@@ -75,7 +71,6 @@ export function BaccaratCalculator() {
         id: nextId,
         playerCards: [...playerCards],
         bankerCards: [...bankerCards],
-        roundWinner: getRoundWinner(playerCards, bankerCards),
         score: totalScore,
         rollingSum6: recordRollingSum6,
         recommendation:
@@ -378,12 +373,8 @@ export function BaccaratCalculator() {
             </div>
 
             <ResultDisplay
-              totalScore={totalScore}
-              hasCurrentRound={isReadyToCalculate}
-              rollingSum6={rollingSum6}
+              totalScore={rollingSum6 ?? 0}
               recommendation={recommendation}
-              roundsReady={roundsReady}
-              roundWinner={roundWinner}
               playerCards={playerCards}
               bankerCards={bankerCards}
             />
