@@ -10,7 +10,8 @@ export interface HistoryRecord {
   bankerCards: string[]
   roundWinner: "player" | "banker" | "tie"
   score: number
-  recommendation: "banker" | "player"
+  rollingSum6: number | null
+  recommendation: "banker" | "player" | null
   timestamp: Date
 }
 
@@ -112,16 +113,23 @@ export function HistoryPanel({ records, onClear }: HistoryPanelProps) {
                       : "本局閒"}
                 </span>
 
-                <span
-                  className={cn(
-                    "shrink-0 px-2 py-0.5 rounded text-xs font-bold",
-                    record.recommendation === "banker"
-                      ? "bg-banker/15 text-banker"
-                      : "bg-player/15 text-player"
-                  )}
-                >
-                  下局{record.recommendation === "banker" ? "莊" : "閒"}
-                </span>
+                {record.recommendation ? (
+                  <span
+                    className={cn(
+                      "shrink-0 px-2 py-0.5 rounded text-xs font-bold",
+                      record.recommendation === "banker"
+                        ? "bg-banker/15 text-banker"
+                        : "bg-player/15 text-player"
+                    )}
+                  >
+                    Sum6 {record.rollingSum6 !== null && record.rollingSum6 >= 0 ? "+" : ""}
+                    {record.rollingSum6 ?? "—"} 下局{record.recommendation === "banker" ? "莊" : "閒"}
+                  </span>
+                ) : (
+                  <span className="shrink-0 px-2 py-0.5 rounded text-xs font-bold bg-secondary text-muted-foreground">
+                    未滿6局
+                  </span>
+                )}
               </div>
             ))}
           </div>

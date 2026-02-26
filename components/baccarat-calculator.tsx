@@ -49,11 +49,14 @@ export function BaccaratCalculator() {
   const totalScore = isReadyToCalculate
     ? calculateScore(playerCards, bankerCards)
     : 0
-  const recommendation: "banker" | "player" | null = isReadyToCalculate
-    ? totalScore >= 0
-      ? "banker"
-      : "player"
-    : null
+  const recentWindow = history.slice(0, 6)
+  const rollingSum6 =
+    recentWindow.length === 6
+      ? recentWindow.reduce((sum, item) => sum + item.score, 0)
+      : null
+  const recommendation: "banker" | "player" | null =
+    rollingSum6 === null ? null : rollingSum6 >= 0 ? "banker" : "player"
+  const roundsReady = Math.min(history.length, 6)
   const roundWinner: "player" | "banker" | "tie" | null = isReadyToCalculate
     ? getRoundWinner(playerCards, bankerCards)
     : null
@@ -61,17 +64,29 @@ export function BaccaratCalculator() {
   const handleSubmit = () => {
     if (!isReadyToCalculate) return
 
-    const record: HistoryRecord = {
-      id: nextId,
-      playerCards: [...playerCards],
-      bankerCards: [...bankerCards],
-      roundWinner: getRoundWinner(playerCards, bankerCards),
-      score: totalScore,
-      recommendation: totalScore >= 0 ? "banker" : "player",
-      timestamp: new Date(),
-    }
-
     setHistory((prev) => {
+      const recentScores = [totalScore, ...prev.map((item) => item.score)]
+      const recordRollingSum6 =
+        recentScores.length >= 6
+          ? recentScores.slice(0, 6).reduce((sum, score) => sum + score, 0)
+          : null
+
+      const record: HistoryRecord = {
+        id: nextId,
+        playerCards: [...playerCards],
+        bankerCards: [...bankerCards],
+        roundWinner: getRoundWinner(playerCards, bankerCards),
+        score: totalScore,
+        rollingSum6: recordRollingSum6,
+        recommendation:
+          recordRollingSum6 === null
+            ? null
+            : recordRollingSum6 >= 0
+              ? "banker"
+              : "player",
+        timestamp: new Date(),
+      }
+
       const updated = [record, ...prev]
       return updated.slice(0, 100)
     })
@@ -260,12 +275,8 @@ export function BaccaratCalculator() {
     void handleLoadCloudSettings()
   }, [handleLoadCloudSettings])
 
-  const bankerCount = history.filter(
-    (r) => r.recommendation === "banker"
-  ).length
-  const playerCount = history.filter(
-    (r) => r.recommendation === "player"
-  ).length
+  const bankerCount = history.filter((r) => r.recommendation === "banker").length
+  const playerCount = history.filter((r) => r.recommendation === "player").length
 
   return (
     <div className="min-h-screen bg-background">
@@ -368,7 +379,10 @@ export function BaccaratCalculator() {
 
             <ResultDisplay
               totalScore={totalScore}
+              hasCurrentRound={isReadyToCalculate}
+              rollingSum6={rollingSum6}
               recommendation={recommendation}
+              roundsReady={roundsReady}
               roundWinner={roundWinner}
               playerCards={playerCards}
               bankerCards={bankerCards}

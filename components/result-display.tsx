@@ -7,7 +7,10 @@ import { toast } from "sonner"
 
 interface ResultDisplayProps {
   totalScore: number
+  hasCurrentRound: boolean
+  rollingSum6: number | null
   recommendation: "banker" | "player" | null
+  roundsReady: number
   roundWinner: "player" | "banker" | "tie" | null
   playerCards: string[]
   bankerCards: string[]
@@ -15,23 +18,28 @@ interface ResultDisplayProps {
 
 export function ResultDisplay({
   totalScore,
+  hasCurrentRound,
+  rollingSum6,
   recommendation,
+  roundsReady,
   roundWinner,
   playerCards,
   bankerCards,
 }: ResultDisplayProps) {
   const [copied, setCopied] = useState(false)
 
-  const hasResult = recommendation !== null
-  const strength = Math.abs(totalScore)
+  const hasResult = recommendation !== null && rollingSum6 !== null
+  const strength = Math.abs(rollingSum6 ?? 0)
   const confidence =
     strength >= 40 ? "高" : strength >= 20 ? "中" : "低"
 
   const handleCopy = async () => {
-    if (!hasResult) return
+    if (!hasResult || !hasCurrentRound || rollingSum6 === null || !roundWinner) return
     const text = `百家樂計算結果\n閒家牌面：${playerCards.join(", ")}\n莊家牌面：${bankerCards.join(", ")}\n本局勝方：${
       roundWinner === "tie" ? "和" : roundWinner === "banker" ? "莊" : "閒"
-    }\n加總分數：${totalScore}\n下局建議：${recommendation === "banker" ? "莊" : "閒"}`
+    }\n本局RoundScore：${totalScore >= 0 ? `+${totalScore}` : totalScore}\n最近6局Sum6：${
+      rollingSum6 >= 0 ? `+${rollingSum6}` : rollingSum6
+    }\n下局建議：${recommendation === "banker" ? "莊" : "閒"}`
     await navigator.clipboard.writeText(text)
     setCopied(true)
     toast.success("已複製結果")
@@ -92,7 +100,7 @@ export function ResultDisplay({
               </div>
             ) : (
               <div className="mt-2 inline-flex px-4 py-2 rounded-lg bg-secondary text-muted-foreground font-bold">
-                等待合法局面
+                {`等待滿6局（目前 ${roundsReady}/6）`}
               </div>
             )}
           </div>
@@ -102,10 +110,16 @@ export function ResultDisplay({
             <span className="mx-2">|</span>
             莊：<span className="font-mono text-foreground">{bankerCards.join(" ") || "—"}</span>
           </div>
+          <div className="text-sm text-muted-foreground">
+            本局 RoundScore：{" "}
+            <span className="font-mono text-foreground">
+              {hasCurrentRound ? (totalScore >= 0 ? `+${totalScore}` : totalScore) : "—"}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          <div className="text-xs text-muted-foreground">加總分數</div>
+          <div className="text-xs text-muted-foreground">最近6局 Sum6</div>
           <div
             className={cn(
               "font-mono text-5xl font-black tracking-tight leading-none",
@@ -114,7 +128,11 @@ export function ResultDisplay({
               recommendation === "player" && "text-player"
             )}
           >
-            {hasResult ? (totalScore >= 0 ? `+${totalScore}` : totalScore) : "—"}
+            {hasResult && rollingSum6 !== null
+              ? rollingSum6 >= 0
+                ? `+${rollingSum6}`
+                : rollingSum6
+              : "—"}
           </div>
           {hasResult && (
             <div className="text-xs text-muted-foreground">
@@ -124,7 +142,7 @@ export function ResultDisplay({
         </div>
       </div>
 
-      {hasResult && (
+      {hasResult && hasCurrentRound && (
         <button
           onClick={handleCopy}
           className={cn(
