@@ -25,10 +25,24 @@ export function StandardRoundInput({
   const step = getNextStep(playerCards, bankerCards)
   const totalCards = playerCards.length + bankerCards.length
 
+  const getNextSlotLabel = () => {
+    if (step.status !== "need_card") return null
+    if (step.side === "player") {
+      if (playerCards.length === 0) return "第1張"
+      if (playerCards.length === 1) return "第2張"
+      return "第5張"
+    }
+    if (bankerCards.length === 0) return "第3張"
+    if (bankerCards.length === 1) return "第4張"
+    return playerCards.length >= 3 ? "第6張" : "第5張"
+  }
+
+  const nextSlotLabel = getNextSlotLabel()
+
   const rows = [
-    { playerLabel: "閒1", playerValue: playerCards[0], bankerLabel: "莊1", bankerValue: bankerCards[0] },
-    { playerLabel: "閒2", playerValue: playerCards[1], bankerLabel: "莊2", bankerValue: bankerCards[1] },
-    { playerLabel: "閒3", playerValue: playerCards[2], bankerLabel: "莊3", bankerValue: bankerCards[2] },
+    { playerLabel: "第1張", playerValue: playerCards[0], bankerLabel: "第3張", bankerValue: bankerCards[0] },
+    { playerLabel: "第2張", playerValue: playerCards[1], bankerLabel: "第4張", bankerValue: bankerCards[1] },
+    { playerLabel: "第5張", playerValue: playerCards[2], bankerLabel: "第6張", bankerValue: bankerCards[2] },
   ]
 
   const lastDealtSide = getLastDealtSide(playerCards, bankerCards)
@@ -38,7 +52,7 @@ export function StandardRoundInput({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-bold text-foreground">標準發牌輸入</h3>
-          <p className="text-xs text-muted-foreground">依順序輸入：閒1 → 莊1 → 閒2 → 莊2 → 補牌</p>
+          <p className="text-xs text-muted-foreground">依畫面提示輸入牌序</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -73,15 +87,27 @@ export function StandardRoundInput({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
+        <div className="text-center text-xs font-bold text-player">閒</div>
+        <div className="text-center text-xs font-bold text-banker">莊</div>
         {rows.map((row) => (
           <div key={row.playerLabel} className="contents">
-            <div className="rounded-lg border px-2 py-2 text-center border-player/30 bg-player/5">
+            <div
+              className={cn(
+                "rounded-lg border px-2 py-2 text-center border-player/30 bg-player/5",
+                nextSlotLabel === row.playerLabel && "ring-2 ring-player border-player"
+              )}
+            >
               <div className="text-[11px] text-player font-semibold">{row.playerLabel}</div>
               <div className="font-mono text-lg font-bold min-h-7 text-foreground">
                 {row.playerValue ?? "—"}
               </div>
             </div>
-            <div className="rounded-lg border px-2 py-2 text-center border-banker/30 bg-banker/5">
+            <div
+              className={cn(
+                "rounded-lg border px-2 py-2 text-center border-banker/30 bg-banker/5",
+                nextSlotLabel === row.bankerLabel && "ring-2 ring-banker border-banker"
+              )}
+            >
               <div className="text-[11px] text-banker font-semibold">{row.bankerLabel}</div>
               <div className="font-mono text-lg font-bold min-h-7 text-foreground">
                 {row.bankerValue ?? "—"}
@@ -102,7 +128,7 @@ export function StandardRoundInput({
         {step.message}
         {step.status === "need_card" && (
           <span className="ml-2">
-            下一張：{step.side === "player" ? "閒家" : "莊家"}
+            下一張：{nextSlotLabel ?? (step.side === "player" ? "閒家" : "莊家")}
           </span>
         )}
         {lastDealtSide && step.status !== "invalid" && (
