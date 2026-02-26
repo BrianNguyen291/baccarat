@@ -25,37 +25,10 @@ export function StandardRoundInput({
   const step = getNextStep(playerCards, bankerCards)
   const totalCards = playerCards.length + bankerCards.length
 
-  const sequence = [
-    { side: "player" as const, label: "閒1", value: playerCards[0] },
-    { side: "banker" as const, label: "莊1", value: bankerCards[0] },
-    { side: "player" as const, label: "閒2", value: playerCards[1] },
-    { side: "banker" as const, label: "莊2", value: bankerCards[1] },
-    {
-      side:
-        playerCards.length >= 3
-          ? ("player" as const)
-          : bankerCards.length >= 3
-            ? ("banker" as const)
-            : step.status === "need_card"
-              ? step.side
-              : ("player" as const),
-      label:
-        playerCards.length >= 3
-          ? "閒3"
-          : bankerCards.length >= 3
-            ? "莊3"
-            : step.status === "need_card"
-              ? step.side === "player"
-                ? "閒3"
-                : "莊3"
-              : "第5張",
-      value: playerCards[2] ?? bankerCards[2],
-    },
-    {
-      side: "banker" as const,
-      label: "莊3",
-      value: bankerCards.length >= 3 && playerCards.length >= 3 ? bankerCards[2] : undefined,
-    },
+  const rows = [
+    { playerLabel: "閒1", playerValue: playerCards[0], bankerLabel: "莊1", bankerValue: bankerCards[0] },
+    { playerLabel: "閒2", playerValue: playerCards[1], bankerLabel: "莊2", bankerValue: bankerCards[1] },
+    { playerLabel: "閒3", playerValue: playerCards[2], bankerLabel: "莊3", bankerValue: bankerCards[2] },
   ]
 
   const lastDealtSide = getLastDealtSide(playerCards, bankerCards)
@@ -99,20 +72,20 @@ export function StandardRoundInput({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-        {sequence.map((slot, idx) => (
-          <div
-            key={`${slot.label}-${idx}`}
-            className={cn(
-              "rounded-lg border px-2 py-2 text-center",
-              slot.side === "player"
-                ? "border-player/30 bg-player/5"
-                : "border-banker/30 bg-banker/5"
-            )}
-          >
-            <div className="text-[11px] text-muted-foreground">{slot.label}</div>
-            <div className="font-mono text-lg font-bold min-h-7 text-foreground">
-              {slot.value ?? "—"}
+      <div className="grid grid-cols-2 gap-2">
+        {rows.map((row) => (
+          <div key={row.playerLabel} className="contents">
+            <div className="rounded-lg border px-2 py-2 text-center border-player/30 bg-player/5">
+              <div className="text-[11px] text-player font-semibold">{row.playerLabel}</div>
+              <div className="font-mono text-lg font-bold min-h-7 text-foreground">
+                {row.playerValue ?? "—"}
+              </div>
+            </div>
+            <div className="rounded-lg border px-2 py-2 text-center border-banker/30 bg-banker/5">
+              <div className="text-[11px] text-banker font-semibold">{row.bankerLabel}</div>
+              <div className="font-mono text-lg font-bold min-h-7 text-foreground">
+                {row.bankerValue ?? "—"}
+              </div>
             </div>
           </div>
         ))}
@@ -153,4 +126,3 @@ export function StandardRoundInput({
     </div>
   )
 }
-
